@@ -55,8 +55,8 @@ A failed package never sinks its siblings: per-package install/export failures a
 still build, and the expected output of the `download` stage is a partial success - but it is never silent. Failures
 are recorded in `install_prop->{xrepo}{errors}` and mirrored into `runtime_prop->{errors}` (keyed by package
 name), a `xrepo.manifest` is written listing only the packages that actually installed and exported, and a warning is
-emitted naming the failed packages. Consumers can check `runtime_prop-`{errors}> to see exactly what is missing. The
-build only aborts when no package installed at all.
+emitted naming the failed packages. Consumers can check `runtime_prop->{errors}` to see exactly what is missing.
+The build only aborts when no package installed at all.
 
 # PROPERTIES
 

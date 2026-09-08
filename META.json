@@ -90,7 +90,7 @@
          "version" : "v1.0.0"
       }
    },
-   "release_status" : "testing",
+   "release_status" : "stable",
    "resources" : {
       "bugtracker" : {
          "web" : "https://github.com/sanko/Alien-Build-Plugin-Build-Xrepo/issues"

@@ -2,8 +2,8 @@ use v5.40;
 use blib;
 use Test2::V0 '!subtest', -no_srand => 1;
 use Test2::Util::Importer 'Test2::Tools::Subtest' => ( subtest_streamed => { -as => 'subtest' } );
-use Test::Alien::Build qw(alienfile_ok alien_build_ok alien_install_type_is);
-use Test::Alien        qw(alien_ok ffi_ok with_subtest);
+use Test::Alien::Build qw[alienfile_ok alien_build_ok alien_install_type_is];
+use Test::Alien        qw[alien_ok ffi_ok with_subtest];
 use Path::Tiny;
 use File::Spec;
 
@@ -41,26 +41,26 @@ $alien || die 'alien build failed';
 alien_ok $alien;
 subtest 'consumer flags and dirs' => sub {
     my @dyn = $alien->dynamic_libs;
-    ok( scalar @dyn >= 1, 'dynamic libs found' );
-    like( $alien->cflags, qr/-I/, 'cflags present' );
-    like( $alien->libs,   qr/-L/, 'libs present' );
+    ok scalar @dyn >= 1, 'dynamic libs found';
+    like $alien->cflags, qr[-I], 'cflags present';
+    like $alien->libs,   qr[-L], 'libs present';
 };
 
-# The capstone FFI check: load the dynamic libs the plugin gathered and call a
-# real exported symbol to prove the whole chain down to the native library works.
-ffi_ok { symbols => ['zlibVersion'] }, with_subtest {
+# The capstone FFI check: load the dynamic libs the plugin gathered and call a real exported symbol
+# to prove the whole chain down to the native library works.
+ffi_ok with_subtest {
     my ($ffi) = @_;
     my $func  = $ffi->function( zlibVersion => [] => 'string' );
     my $v     = $func->call;
-    ok( defined $v && length $v, 'zlibVersion called via gathered dynamic_libs: ' . ( $v // '(undef)' ) );
-    like( $v, qr/^\d+\.\d+\.\d+/, 'zlibVersion returned a semver string' );
-}, 'ffi_ok loads and calls zlibVersion';
+    ok defined $v && length $v, 'zlibVersion called via gathered dynamic_libs: ' . ( $v // '(undef)' );
+    like $v, qr[^\d+\.\d+\.\d+], 'zlibVersion returned a semver string';
+};
+#
 done_testing;
 
-sub _which_in_path {
-    my ($exec) = @_;
-    my $sep    = ( $^O eq 'MSWin32' ) ? ';'                : ':';
-    my @exts   = ( $^O eq 'MSWin32' ) ? qw(.exe .bat .cmd) : ('');
+sub _which_in_path ($exec) {
+    my $sep  = ( $^O eq 'MSWin32' ) ? ';'                : ':';
+    my @exts = ( $^O eq 'MSWin32' ) ? qw(.exe .bat .cmd) : ('');
     for my $dir ( split /\Q$sep\E/, $ENV{PATH} ) {
         next if !length $dir;
         for my $ext (@exts) {
