@@ -1,4 +1,4 @@
-package Alien::Build::Plugin::Build::Xrepo v1.0.0 {
+package Alien::Build::Plugin::Build::Xrepo v1.0.1 {
     use v5.40;
     use Alien::Build::Plugin;
     use Carp       ();
@@ -27,7 +27,7 @@ package Alien::Build::Plugin::Build::Xrepo v1.0.0 {
         my $recipe = Alien::Xrepo::Build::Recipe->new(
             ( defined $self->name        ? ( name        => $self->name )        : () ),
             ( defined $self->local_repos ? ( local_repos => $self->local_repos ) : () ),
-            packages => $self->packages,
+            packages => $self->packages
         );
         my %ambient;
         $ambient{version} = $self->version if defined $self->version;
@@ -95,13 +95,20 @@ package Alien::Build::Plugin::Build::Xrepo v1.0.0 {
                 my $src = Cwd::getcwd();
 
                 # Register any local repo trees (patched/private package recipes) with the engine
-                # before installing, mirroring the engine's configure stage.
+                # before installing, mirroring the engine's configure stage.  Remember only the
+                # repos this stage actually added: they point into the build's temporary tree and
+                # must be unregistered before that tree disappears.
+                my @added_repos;
                 for my $repo_def ( @{ $recipe->local_repos || [] } ) {
                     my $dir = Path::Tiny->new($repo_def)->absolute;
                     next unless $dir->child('packages')->is_dir;
                     my $nm = 'alien-' . $dir->basename;
-                    say "[xrepo] no engine support for add_repo (local repo $nm ignored)" if !$r->can('add_repo');
-                    eval { $r->add_repo( $nm, $dir->stringify ) };
+                    if ( !$r->can('add_repo') ) {
+                        say "[xrepo] no engine support for add_repo (local repo $nm ignored)" if $verbose;
+                        next;
+                    }
+                    my $added = eval { $r->add_repo( $nm, $dir->stringify ); 1 };
+                    push @added_repos, $nm if $added;
                 }
                 my %packages;
                 my %errors;
@@ -130,6 +137,11 @@ package Alien::Build::Plugin::Build::Xrepo v1.0.0 {
                         $errors{$name} = 'export failed: ' . ( $@ || 'unknown error' );
                     }
                 }
+
+                # Unregister the temporary local repos as soon as the installs/exports are done.
+                # Their paths live under the build's temp tree; leaving them registered makes
+                # later xrepo commands fail because the repositories no longer exist.
+                _remove_repos( $r, \@added_repos );
 
                 # A failed sibling does not sink the surviving packages (partial installs are by
                 # design), but it must never be silent: prune export-failures from the success set,
@@ -297,6 +309,20 @@ package Alien::Build::Plugin::Build::Xrepo v1.0.0 {
             }
         );
         $self;
+    }
+
+    sub _remove_repos ( $engine, $names ) {
+        return unless $names && @$names;
+        if ( !$engine->can('rm_repo') ) {
+            my $left = join ', ', @$names;
+            warn "Alien::Build::Plugin::Build::Xrepo: engine does not support rm_repo; " . "temporary repo(s) $left left registered\n";
+            return;
+        }
+        for my $name ( reverse @$names ) {
+            eval { $engine->rm_repo($name) };
+            warn "Alien::Build::Plugin::Build::Xrepo: could not remove temporary repo $name: $@" if $@;
+        }
+        return;
     }
 
     sub _reroot_bins ( $build, $bins //= () ) {
