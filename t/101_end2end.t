@@ -2,9 +2,6 @@ use v5.40;
 use blib;
 use Test2::V0 '!subtest', -no_srand => 1;
 use Test2::Util::Importer 'Test2::Tools::Subtest' => ( subtest_streamed => { -as => 'subtest' } );
-use Carp::Always;
-
-#~ use Test2::Require::AuthorTesting;
 use Test::Alien::Build qw[alienfile_ok alien_build_ok alien_install_type_is];
 use Test::Alien        qw[alien_ok ffi_ok with_subtest];
 use Capture::Tiny      qw[capture];
@@ -52,6 +49,7 @@ my $started = time;
     my $alien = alien_build_ok 'plugin built and wrapped by Alien::Base';
     if ( !$alien ) {
         _diagnose_failed_installs($started);
+
         #die 'alien build failed';
     }
     alien_ok $alien;
@@ -92,7 +90,7 @@ sub _diagnose_failed_installs ($since) {
     }
     my %logs;
     $packages->visit(
-        sub ($file, $state) {
+        sub ( $file, $state ) {
             diag "$file";
             return if $file->is_dir;
             return unless $file->basename eq 'install.txt';

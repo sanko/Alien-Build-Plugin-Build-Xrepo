@@ -77,7 +77,6 @@
          },
          "requires" : {
             "Capture::Tiny" : "0",
-            "Carp::Always" : "0",
             "File::Temp" : "0",
             "Test2::V0" : "0",
             "Test::Alien" : "0",
