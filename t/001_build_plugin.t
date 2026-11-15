@@ -104,7 +104,7 @@ sub driven_build ($text) {
     $build->build;
     return { dir => $dir, build => $build };
 }
-sub winslash { my $s = shift; $s =~ s{\\}{/}g; $s }
+sub winslash { shift =~ s{\\}{/}gr }
 #
 subtest 'share install assembles and gathers a single package' => sub {
     my $r     = driven_build( sf("['zstd']") );

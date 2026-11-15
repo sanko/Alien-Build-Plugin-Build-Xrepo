@@ -98,7 +98,6 @@ package Alien::Build::Plugin::Build::Xrepo v1.0.1 {
                 # before installing, mirroring the engine's configure stage.  Remember only the
                 # repos this stage actually added: they point into the build's temporary tree and
                 # must be unregistered before that tree disappears.
-                my @added_repos;
                 for my $repo_def ( @{ $recipe->local_repos || [] } ) {
                     my $dir = Path::Tiny->new($repo_def)->absolute;
                     next unless $dir->child('packages')->is_dir;
@@ -108,8 +107,17 @@ package Alien::Build::Plugin::Build::Xrepo v1.0.1 {
                         next;
                     }
                     my $added = eval { $r->add_repo( $nm, $dir->stringify ); 1 };
-                    push @added_repos, $nm if $added;
+                    $build->runtime_prop->{repos}{$nm}++ if $added;
                 }
+
+                # Keep the repos around a little longer
+                $meta->register_hook(
+                    clean_install => sub ($build) {
+                        return unless keys %{ $build->runtime_prop->{repos} };
+                        say 'Removing temporary repos from xrepo...' if $verbose;
+                        _remove_repos( $r, [ keys %{ $build->runtime_prop->{repos} } ] );
+                    }
+                );
                 my %packages;
                 my %errors;
                 for my $name ( $recipe->packages ) {
@@ -130,18 +138,13 @@ package Alien::Build::Plugin::Build::Xrepo v1.0.1 {
                     }
                     my $target = Path::Tiny->new($src)->child($name);
                     $target->mkpath;
-                    eval { $r->export( $name, $version, %opts, packagedir => $target->stringify ) };
-                    if ($@) {
+                    try { $r->export( $name, $version, %opts, packagedir => $target->stringify ) }
+                    catch ($e) {
                         $target->remove_tree if $target->exists;
                         delete $packages{$name};
-                        $errors{$name} = 'export failed: ' . ( $@ || 'unknown error' );
+                        $errors{$name} = 'export failed: ' . ( $e || 'unknown error' );
                     }
                 }
-
-                # Unregister the temporary local repos as soon as the installs/exports are done.
-                # Their paths live under the build's temp tree; leaving them registered makes
-                # later xrepo commands fail because the repositories no longer exist.
-                _remove_repos( $r, \@added_repos );
 
                 # A failed sibling does not sink the surviving packages (partial installs are by
                 # design), but it must never be silent: prune export-failures from the success set,
@@ -168,6 +171,11 @@ package Alien::Build::Plugin::Build::Xrepo v1.0.1 {
                 # Alien::Build will die by default.
                 my $dl = Path::Tiny->new('.')->absolute->stringify;
                 $build->install_prop->{download_detail}{$dl} = { protocol => 'file' };
+
+                # Unregister the temporary local repos as soon as the installs/exports are done.
+                # Their paths live under the build's temp tree; leaving them registered makes
+                # later xrepo commands fail because the repositories no longer exist.
+                _remove_repos( $r, [ keys %{ $build->runtime_prop->{repos} } ] );
                 die 'Alien::Build::Plugin::Build::Xrepo: no packages installed successfully' unless %packages;
             }
         );

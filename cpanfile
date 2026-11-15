@@ -14,6 +14,7 @@ on build => sub {
 };
 on test => sub {
     requires 'Capture::Tiny';
+    requires 'Carp::Always';
     requires 'File::Temp';
     requires 'Test2::V0';
     requires 'Test::Alien';

@@ -7,6 +7,7 @@ build_requires:
   Alien::Build: '2.84'
   Alien::Xrepo: v1.0.11
   Capture::Tiny: '0'
+  Carp::Always: '0'
   File::Temp: '0'
   Test2::V0: '0'
   Test::Alien: '0'
